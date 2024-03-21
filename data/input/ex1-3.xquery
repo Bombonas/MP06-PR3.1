@@ -5,13 +5,16 @@
 declare option output:method "xml";
 declare option output:indent "yes";
 
-<users>{
-  for $tag in /tags/row
-    let $postTags := tokenize(/row/@Tags, '&gt;&lt;')
-    let $count := count(/post/row[contains(@Tags, $tag/TagName)])
-    order by $count descending
-    return <user>
-            <nick>{$tag/@TagName/string()}</nick>
-            <count>{$count}</count>
-          </user>
-}</users>
+<users>
+  {
+    for $tag in /tags/row
+      let $name := $tag/@TagName/string()
+      let $count := xs:integer($tag/@Count)
+      order by $count descending
+    return
+    <user>
+      <nick>{ $name }</nick>
+      <count>{ $count }</count>
+    </user>
+  }
+</users>

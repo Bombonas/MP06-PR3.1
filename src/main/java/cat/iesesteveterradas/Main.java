@@ -1,6 +1,9 @@
 package cat.iesesteveterradas;
 
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
 
 import org.basex.api.client.ClientSession;
 import org.basex.core.*;
@@ -20,41 +23,31 @@ public class Main {
         int port = 1984;
         String username = "admin"; // Default username
         String password = "admin"; // Default password
-
+        
         // Establish a connection to the BaseX server
         try (ClientSession session = new ClientSession(host, port, username, password)) {
-            logger.info("Connected to BaseX server.");
+            File IN = new File("./data/input");
+            File OUT = new File("./data/output");
+            session.execute(new Open("BBDD-PR3")); 
+            File[] files = IN.listFiles();
 
-            session.execute(new Open("factbook")); 
-            
-            // Example query - adjust as needed
-            String myQuery = "sum(//country/@population/number())";
+            for (File file : files) {
+                if (file.isFile() && file.getName().toLowerCase().endsWith(".xquery")) {
+                    logger.info(file.getName());
+                    String query = Files.readString(file.toPath());
 
-            // Execute the query
-            String result = session.execute(new XQuery(myQuery));
-            // Print the result
-            logger.info("Query Result:");
-            logger.info(result);
+                    String name = file.getName().substring(0, file.getName().lastIndexOf("."));
 
-            myQuery = """
-                declare function local:gdpPerArea($country as element(country)) as xs:double? {
-                    let $gdpTotal := number($country/@gdp_total) * 1000000 (: Convertint de milions a unitats per precisió :)
-                    let $totalArea := number($country/@total_area) (: Asumint que l'àrea està en quilòmetres quadrats :)
-                    return if ($totalArea > 0) then $gdpTotal div $totalArea else ()
-                  };
-                
-                  for $country in //country
-                  let $gdpRatio := local:gdpPerArea($country)
-                  order by $gdpRatio descending
-                  return 
-                    <country name="{$country/@name}" gdp_per_area="{$gdpRatio}"/>                    
-            """;
+                    String result = session.execute(new XQuery(query));
 
-            // Execute the query
-            result = session.execute(new XQuery(myQuery));
-            // Print the result
-            logger.info("Query Result:");
-            logger.info(result);
+                    String OUTfile = OUT.getAbsolutePath() + File.separator + name + ".xml";
+                    try (FileWriter writer = new FileWriter(OUTfile)) {
+                        writer.write(result);
+                    } catch (IOException e) {
+                        logger.error("Error writing output file: " + e.getMessage());
+                    }
+                }
+            }
 
         } catch (BaseXException e) {
             logger.error("Error connecting or executing the query: " + e.getMessage());
